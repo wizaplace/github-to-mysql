@@ -2,6 +2,13 @@
 
 Synchronizes GitHub data (issues, labels, ...) to a MySQL database.
 
+Progress:
+
+- [x ] synchronize issues and pull requests
+    - [ ] support multiple pages of results
+- [x] synchronize labels
+- [ ] synchronize milestones
+
 ## Installation
 
 - clone the repository
