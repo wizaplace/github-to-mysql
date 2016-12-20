@@ -1,5 +1,4 @@
 <?php
-declare(strict_types = 1);
 
 use Dotenv\Dotenv;
 use GuzzleHttp\Client;
@@ -24,7 +23,7 @@ $db = \Doctrine\DBAL\DriverManager::getConnection([
     'charset' => 'UTF8',
 ], new \Doctrine\DBAL\Configuration());
 
-$app->command('sync repository [--since-forever]', function (string $repository, bool $sinceForever = null, OutputInterface $output) use ($db) {
+$app->command('sync repository [--since-forever]', function ($repository, $sinceForever = null, OutputInterface $output) use ($db) {
     $http = new Client();
 
     $since = null;
