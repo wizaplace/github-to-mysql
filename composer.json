@@ -1,0 +1,8 @@
+{
+    "require": {
+        "mnapoli/silly": "^1.5",
+        "guzzlehttp/guzzle": "^6.2",
+        "vlucas/phpdotenv": "^2.4",
+        "doctrine/dbal": "^2.5"
+    }
+}
