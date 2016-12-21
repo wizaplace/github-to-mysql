@@ -1,5 +1,6 @@
 <?php
 
+use Doctrine\DBAL\Schema\Schema;
 use Dotenv\Dotenv;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
@@ -16,10 +17,10 @@ $app = new Application;
 // DB
 $db = \Doctrine\DBAL\DriverManager::getConnection([
     'dbname' => getenv('DB_NAME'),
-    'user' => getenv('DB_USER'),
-    'password' => getenv('DB_PASSWORD'),
-    'host' => getenv('DB_HOST'),
-    'port' => getenv('DB_PORT'),
+    'user' => getenv('DB_USER') ?: 'root',
+    'password' => getenv('DB_PASSWORD') ?: '',
+    'host' => getenv('DB_HOST') ?: 'localhost',
+    'port' => getenv('DB_PORT') ?: 3306,
     'driver' => 'pdo_mysql',
     'charset' => 'UTF8',
 ], new \Doctrine\DBAL\Configuration());
@@ -74,7 +75,7 @@ MYSQL;
                 ],
             ]);
         } catch (ClientException $e) {
-            if ($e->getResponse()->getStatusCode() === 404) {
+            if (!empty($issues) && $e->getResponse()->getStatusCode() === 404) {
                 // Stop the loop if 404
                 break;
             }
@@ -128,6 +129,68 @@ MYSQL;
                 'label_id' => $label['id'],
             ]);
         }
+    }
+});
+
+$app->command('db-init [--force]', function ($force, OutputInterface $output) use ($db) {
+    $schema = new Schema();
+
+    // Labels
+    $labelsTable = $schema->createTable('github_labels');
+    $labelsTable->addColumn('id', 'integer', ['unsigned' => true]);
+    $labelsTable->addColumn('url', 'string');
+    $labelsTable->addColumn('name', 'string');
+    $labelsTable->addColumn('color', 'string');
+    $labelsTable->setPrimaryKey(['id']);
+    $labelsTable->addIndex(['name']);
+    // Issues
+    $issuesTable = $schema->createTable('github_issues');
+    $issuesTable->addColumn('id', 'integer', ['unsigned' => true]);
+    $issuesTable->addColumn('title', 'text');
+    $issuesTable->addColumn('open', 'boolean');
+    $issuesTable->addColumn('author', 'string');
+    $issuesTable->addColumn('author_avatar_url', 'string', ['notnull' => false]);
+    $issuesTable->addColumn('created_at', 'datetime');
+    $issuesTable->addColumn('updated_at', 'datetime');
+    $issuesTable->addColumn('closed_at', 'datetime', ['notnull' => false]);
+    $issuesTable->addColumn('is_pull_request', 'boolean');
+    $issuesTable->setPrimaryKey(['id']);
+    $issuesTable->addIndex(['author']);
+    $issuesTable->addIndex(['open']);
+    $issuesTable->addIndex(['created_at']);
+    $issuesTable->addIndex(['updated_at']);
+    $issuesTable->addIndex(['closed_at']);
+    $issuesTable->addIndex(['is_pull_request']);
+    // Labels
+    $issueLabelsTable = $schema->createTable('github_issue_labels');
+    $issueLabelsTable->addColumn('issue_id', 'integer', ['unsigned' => true]);
+    $issueLabelsTable->addColumn('label_id', 'integer', ['unsigned' => true]);
+    $issueLabelsTable->setPrimaryKey(['issue_id', 'label_id']);
+    $issueLabelsTable->addForeignKeyConstraint('github_issues', ['issue_id'], ['id'], [
+        'onUpdate' => 'CASCADE',
+        'onDelete' => 'CASCADE',
+    ]);
+
+    $currentSchema = $db->getSchemaManager()->createSchema();
+
+    $migrationQueries = $currentSchema->getMigrateToSql($schema, $db->getDatabasePlatform());
+
+    $db->transactional(function () use ($migrationQueries, $force, $output, $db) {
+        foreach ($migrationQueries as $query) {
+            $output->writeln(sprintf('Running <info>%s</info>', $query));
+            if ($force) {
+                $db->exec($query);
+            }
+        }
+        if (empty($migrationQueries)) {
+            $output->writeln('<info>The database is up to date</info>');
+        }
+    });
+
+    if (!$force) {
+        $output->writeln('<comment>No query was run, use the --force option to run the queries</comment>');
+    } else {
+        $output->writeln('<comment>Queries were successfully run against the database</comment>');
     }
 });
 
