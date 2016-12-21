@@ -2,6 +2,7 @@
 
 use Dotenv\Dotenv;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ClientException;
 use Silly\Application;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -56,17 +57,37 @@ MYSQL;
         $output->writeln(sprintf('Updated label <info>%s</info>', $label['name']));
     }
 
-    $response = $http->request('GET', "https://api.github.com/repos/$repository/issues", [
-        'headers' => [
-            'Authorization' => 'token ' . getenv('GITHUB_TOKEN'),
-        ],
-        'query' => [
-            'state' => 'all',
-            'since' => $since,
-            'per_page' => 100,
-        ]
-    ]);
-    $issues = json_decode((string) $response->getBody(), true);
+    $page = 0;
+    $issues = [];
+    // Loop on all pages available
+    while (true) {
+        try {
+            $response = $http->request('GET', "https://api.github.com/repos/$repository/issues", [
+                'headers' => [
+                    'Authorization' => 'token ' . getenv('GITHUB_TOKEN'),
+                ],
+                'query' => [
+                    'state' => 'all',
+                    'since' => $since,
+                    'per_page' => 100,
+                    'page' => $page,
+                ],
+            ]);
+        } catch (ClientException $e) {
+            if ($e->getResponse()->getStatusCode() === 404) {
+                // Stop the loop if 404
+                break;
+            }
+            throw $e;
+        }
+        $newIssues = json_decode((string) $response->getBody(), true);
+        if (empty($newIssues)) {
+            break;
+        }
+        $issues = array_merge($issues, $newIssues);
+        $page++;
+    }
+    $output->writeln(sprintf('<info>%d</info> issues to process', count($issues)));
 
     foreach ($issues as $issue) {
         $sql = <<<MYSQL
