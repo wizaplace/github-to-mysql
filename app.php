@@ -30,12 +30,7 @@ $db = \Doctrine\DBAL\DriverManager::getConnection([
 $app->command('sync repository [--since-forever]', function ($repository, $sinceForever = null, OutputInterface $output) use ($db) {
     $http = new Client();
 
-    $since = null;
-    if (!$sinceForever) {
-        // Issues updated in the last hours
-        $since = date('c', strtotime('-3 hours'));
-    }
-
+    // Labels
     $response = $http->request('GET', "https://api.github.com/repos/$repository/labels", [
         'headers' => [
             'Authorization' => 'token ' . getenv('GITHUB_TOKEN'),
@@ -45,7 +40,6 @@ $app->command('sync repository [--since-forever]', function ($repository, $since
         ],
     ]);
     $labels = json_decode((string) $response->getBody(), true);
-
     foreach ($labels as $label) {
         $sql = <<<MYSQL
 INSERT INTO github_labels (id, url, name, color) VALUES (:id, :url, :name, :color)
@@ -60,6 +54,37 @@ MYSQL;
         $output->writeln(sprintf('Updated label <info>%s</info>', $label['name']));
     }
 
+    // Milestones
+    $response = $http->request('GET', "https://api.github.com/repos/$repository/milestones", [
+        'headers' => [
+            'Authorization' => 'token ' . getenv('GITHUB_TOKEN'),
+        ],
+        'query' => [
+            'per_page' => 100,
+            'state' => 'all',
+        ],
+    ]);
+    $milestones = json_decode((string) $response->getBody(), true);
+    foreach ($milestones as $milestone) {
+        $sql = <<<MYSQL
+INSERT INTO github_milestones (id, title, description, open, url) VALUES (:id, :title, :description, :open, :url)
+    ON DUPLICATE KEY UPDATE id=:id, title=:title, description=:description, open=:open, url=:url
+MYSQL;
+        $db->executeQuery($sql, [
+            'id' => $milestone['number'],
+            'title' => $milestone['title'],
+            'description' => $milestone['description'],
+            'open' => ($milestone['state'] === 'open') ? 1 : 0,
+            'url' => $milestone['url'],
+        ]);
+        $output->writeln(sprintf('Updated milestone <info>%s</info>', $milestone['title']));
+    }
+
+    $since = null;
+    if (!$sinceForever) {
+        // Issues updated in the last hours
+        $since = date('c', strtotime('-3 hours'));
+    }
     $page = 0;
     $issues = [];
     // Loop on all pages available
@@ -94,8 +119,8 @@ MYSQL;
 
     foreach ($issues as $issue) {
         $sql = <<<MYSQL
-INSERT INTO github_issues (id, title, open, author, author_avatar_url, created_at, updated_at, closed_at, is_pull_request)
-    VALUES (:id, :title, :open, :author, :author_avatar_url, :created_at, :updated_at, :closed_at, :is_pull_request)
+INSERT INTO github_issues (id, title, open, author, author_avatar_url, created_at, updated_at, closed_at, is_pull_request, milestone_id)
+    VALUES (:id, :title, :open, :author, :author_avatar_url, :created_at, :updated_at, :closed_at, :is_pull_request, :milestone_id)
     ON DUPLICATE KEY UPDATE
         id=:id,
         title=:title,
@@ -105,7 +130,8 @@ INSERT INTO github_issues (id, title, open, author, author_avatar_url, created_a
         created_at=:created_at,
         updated_at=:updated_at,
         closed_at=:closed_at,
-        is_pull_request=:is_pull_request
+        is_pull_request=:is_pull_request,
+        milestone_id=:milestone_id
 MYSQL;
         $db->executeQuery($sql, [
             'id' => $issue['number'],
@@ -117,10 +143,11 @@ MYSQL;
             'updated_at' => $issue['updated_at'],
             'closed_at' => $issue['closed_at'],
             'is_pull_request' => isset($issue['pull_request']),
+            'milestone_id' => $issue['milestone']['number'],
         ]);
         $output->writeln(sprintf('Updated issue #%d <info>%s</info>', $issue['number'], $issue['title']));
 
-        // Remove all labels
+        // Remove all label links
         $db->delete('github_issue_labels', [
             'issue_id' => $issue['number'],
         ]);
@@ -145,6 +172,15 @@ $app->command('db-init [--force]', function ($force, OutputInterface $output) us
     $labelsTable->addColumn('color', 'string');
     $labelsTable->setPrimaryKey(['id']);
     $labelsTable->addIndex(['name']);
+    // Milestones
+    $milestonesTable = $schema->createTable('github_milestones');
+    $milestonesTable->addColumn('id', 'integer', ['unsigned' => true]);
+    $milestonesTable->addColumn('title', 'string');
+    $milestonesTable->addColumn('description', 'string');
+    $milestonesTable->addColumn('url', 'string');
+    $milestonesTable->addColumn('open', 'boolean');
+    $milestonesTable->setPrimaryKey(['id']);
+    $milestonesTable->addIndex(['title']);
     // Issues
     $issuesTable = $schema->createTable('github_issues');
     $issuesTable->addColumn('id', 'integer', ['unsigned' => true]);
@@ -156,6 +192,7 @@ $app->command('db-init [--force]', function ($force, OutputInterface $output) us
     $issuesTable->addColumn('updated_at', 'datetime');
     $issuesTable->addColumn('closed_at', 'datetime', ['notnull' => false]);
     $issuesTable->addColumn('is_pull_request', 'boolean');
+    $issuesTable->addColumn('milestone_id', 'integer', ['unsigned' => true, 'notnull' => false]);
     $issuesTable->setPrimaryKey(['id']);
     $issuesTable->addIndex(['author']);
     $issuesTable->addIndex(['open']);
@@ -163,6 +200,7 @@ $app->command('db-init [--force]', function ($force, OutputInterface $output) us
     $issuesTable->addIndex(['updated_at']);
     $issuesTable->addIndex(['closed_at']);
     $issuesTable->addIndex(['is_pull_request']);
+    $issuesTable->addForeignKeyConstraint('github_milestones', ['milestone_id'], ['id']);
     // Labels
     $issueLabelsTable = $schema->createTable('github_issue_labels');
     $issueLabelsTable->addColumn('issue_id', 'integer', ['unsigned' => true]);
