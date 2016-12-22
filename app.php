@@ -15,6 +15,8 @@ $dotenv->load();
 $app = new Application;
 
 // DB
+$dbConfig = new \Doctrine\DBAL\Configuration();
+$dbConfig->setFilterSchemaAssetsExpression('/^github_/');
 $db = \Doctrine\DBAL\DriverManager::getConnection([
     'dbname' => getenv('DB_NAME'),
     'user' => getenv('DB_USER') ?: 'root',
@@ -23,7 +25,7 @@ $db = \Doctrine\DBAL\DriverManager::getConnection([
     'port' => getenv('DB_PORT') ?: 3306,
     'driver' => 'pdo_mysql',
     'charset' => 'UTF8',
-], new \Doctrine\DBAL\Configuration());
+], $dbConfig);
 
 $app->command('sync repository [--since-forever]', function ($repository, $sinceForever = null, OutputInterface $output) use ($db) {
     $http = new Client();
@@ -167,6 +169,10 @@ $app->command('db-init [--force]', function ($force, OutputInterface $output) us
     $issueLabelsTable->addColumn('label_id', 'integer', ['unsigned' => true]);
     $issueLabelsTable->setPrimaryKey(['issue_id', 'label_id']);
     $issueLabelsTable->addForeignKeyConstraint('github_issues', ['issue_id'], ['id'], [
+        'onUpdate' => 'CASCADE',
+        'onDelete' => 'CASCADE',
+    ]);
+    $issueLabelsTable->addForeignKeyConstraint('github_labels', ['label_id'], ['id'], [
         'onUpdate' => 'CASCADE',
         'onDelete' => 'CASCADE',
     ]);
