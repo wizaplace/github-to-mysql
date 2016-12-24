@@ -7,12 +7,16 @@ use GuzzleHttp\Exception\ClientException;
 use Silly\Application;
 use Symfony\Component\Console\Output\OutputInterface;
 
-require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
-$dotenv = new Dotenv(__DIR__);
-$dotenv->load();
+// Load .env file
+if (is_file(getcwd() . '/.env')) {
+    $dotenv = new Dotenv(getcwd());
+    $dotenv->load();
+}
 
 $app = new Application;
+$app->setDefaultCommand('intro');
 
 // DB
 $dbConfig = new \Doctrine\DBAL\Configuration();
@@ -26,6 +30,15 @@ $db = \Doctrine\DBAL\DriverManager::getConnection([
     'driver' => 'pdo_mysql',
     'charset' => 'UTF8',
 ], $dbConfig);
+
+$app->command('intro', function (OutputInterface $output) {
+    $output->writeln('<comment>Getting started</comment>');
+    $output->writeln('- copy the <info>.env.dist</info> file to <info>.env</info> and set up the required configuration parameters.');
+    $output->writeln('- run <info>db-init</info> to setup the database (by default no SQL command will actually be run so that you can check them).');
+    $output->writeln('- run <info>sync [user/repository]</info> to synchronize GitHub data with the database.');
+    $output->writeln('The first time you use this command you will want to run <info>sync [user/repository] --since-forever</info> to synchronize everything.');
+    $output->writeln('Then you can (for example) setup a cron to run every hour without the <info>--since-forever</info> flag.');
+})->descriptions('Displays an introduction on how to use this application.');
 
 $app->command('sync repository [--since-forever]', function ($repository, $sinceForever = null, OutputInterface $output) use ($db) {
     $http = new Client();
