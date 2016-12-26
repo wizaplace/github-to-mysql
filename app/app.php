@@ -97,7 +97,7 @@ MYSQL;
         // Issues updated in the last hours
         $since = date('c', strtotime('-3 hours'));
     }
-    $page = 0;
+    $page = 1;
     $issues = [];
     // Loop on all pages available
     while (true) {
