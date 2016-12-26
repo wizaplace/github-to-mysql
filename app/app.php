@@ -154,7 +154,7 @@ MYSQL;
             'created_at' => date('Y-m-d H:i:s', strtotime($issue['created_at'])),
             'updated_at' => date('Y-m-d H:i:s', strtotime($issue['updated_at'])),
             'closed_at' => date('Y-m-d H:i:s', strtotime($issue['closed_at'])),
-            'is_pull_request' => isset($issue['pull_request']),
+            'is_pull_request' => isset($issue['pull_request']) ? 1 : 0,
             'milestone_id' => $issue['milestone']['number'],
         ]);
         $output->writeln(sprintf('Updated issue #%d <info>%s</info>', $issue['number'], $issue['title']));
