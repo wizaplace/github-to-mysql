@@ -151,9 +151,9 @@ MYSQL;
             'open' => ($issue['state'] === 'open') ? 1 : 0,
             'author' => $issue['user']['login'],
             'author_avatar_url' => $issue['user']['avatar_url'],
-            'created_at' => $issue['created_at'],
-            'updated_at' => $issue['updated_at'],
-            'closed_at' => $issue['closed_at'],
+            'created_at' => date('Y-m-d H:i:s', strtotime($issue['created_at'])),
+            'updated_at' => date('Y-m-d H:i:s', strtotime($issue['updated_at'])),
+            'closed_at' => date('Y-m-d H:i:s', strtotime($issue['closed_at'])),
             'is_pull_request' => isset($issue['pull_request']),
             'milestone_id' => $issue['milestone']['number'],
         ]);
