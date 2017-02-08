@@ -49,11 +49,10 @@ With GitHub data in MySQL, you can extract interesting metrics. Here are a few e
     
     ```sql
     SELECT
-    	YEARWEEK(closed_at) AS week,
-    	AVG(TIMESTAMPDIFF(DAY, created_at, closed_at))
+        YEARWEEK(IFNULL(closed_at, NOW())) AS week,
+        AVG(TIMESTAMPDIFF(DAY, created_at, IFNULL(closed_at, NOW())))
     FROM github_issues
-    WHERE open = 0
-        AND is_pull_request = 1
+    WHERE is_pull_request = 1
     GROUP BY week;
     ```
 
