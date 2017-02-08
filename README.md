@@ -12,7 +12,7 @@ Features:
 ## Getting started
 
 - clone the repository or [download a stable release](https://github.com/wizaplace/github-to-mysql/releases) and unzip it
-- run `composer install
+- run `composer install`
 - copy `.env.dist` to create a `.env` file
 - create the DB tables by running `./github-to-mysql db-init --force`
     You can check which DB queries will be run by removing the `--force` option (the queries will NOT be run if the option is missing).
