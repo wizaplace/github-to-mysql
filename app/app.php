@@ -27,7 +27,7 @@ $db = \Doctrine\DBAL\DriverManager::getConnection([
     'host' => getenv('DB_HOST') ?: 'localhost',
     'port' => getenv('DB_PORT') ?: 3306,
     'driver' => 'pdo_mysql',
-    'charset' => 'UTF8',
+    'charset' => 'utf8mb4',
 ], $dbConfig);
 
 $app->command('intro', function (OutputInterface $output) {
