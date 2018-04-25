@@ -46,6 +46,7 @@ $app->command('sync repository [--since-forever]', function ($repository, $since
     $response = $http->request('GET', "https://api.github.com/repos/$repository/labels", [
         'headers' => [
             'Authorization' => 'token ' . getenv('GITHUB_TOKEN'),
+            'Accept' => 'application/vnd.github.symmetra-preview+json',
         ],
         'query' => [
             'per_page' => 100,
