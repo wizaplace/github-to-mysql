@@ -32,20 +32,16 @@ class data {
     public static function createLabelsFromJson(Connection $db, string $json, \Closure $onLabelCreation): void {
         $labels = json_decode($json, true);
         foreach ($labels as $label) {
+            $data = [
+                'id' => $label['id'],
+                'url' => $label['url'],
+                'name' => $label['name'],
+                'color' => $label['color'],
+            ];
             try {
-                $db->insert('github_labels', [
-                    'id' => $label['id'],
-                    'url' => $label['url'],
-                    'name' => $label['name'],
-                    'color' => $label['color'],
-                ]);
+                $db->insert('github_labels', $data);
             } catch (UniqueConstraintViolationException $e) {
-                $db->update('github_labels', [
-                    'id' => $label['id'],
-                    'url' => $label['url'],
-                    'name' => $label['name'],
-                    'color' => $label['color'],
-                ], [
+                $db->update('github_labels', $data, [
                     'id' => $label['id'],
                 ]);
             }
@@ -56,22 +52,17 @@ class data {
     public static function createMilestonesFromJson(Connection $db, string $json, \Closure $onMilestoneCreation): void {
         $milestones = json_decode($json, true);
         foreach ($milestones as $milestone) {
+            $data = [
+                'id' => $milestone['number'],
+                'title' => $milestone['title'],
+                'description' => $milestone['description'],
+                'open' => ($milestone['state'] === 'open') ? 1 : 0,
+                'url' => $milestone['url'],
+            ];
             try {
-                $db->insert('github_milestones', [
-                    'id' => $milestone['number'],
-                    'title' => $milestone['title'],
-                    'description' => $milestone['description'],
-                    'open' => ($milestone['state'] === 'open') ? 1 : 0,
-                    'url' => $milestone['url'],
-                ]);
+                $db->insert('github_milestones', $data);
             } catch (UniqueConstraintViolationException $e) {
-                $db->update('github_milestones', [
-                    'id' => $milestone['number'],
-                    'title' => $milestone['title'],
-                    'description' => $milestone['description'],
-                    'open' => ($milestone['state'] === 'open') ? 1 : 0,
-                    'url' => $milestone['url'],
-                ], [
+                $db->update('github_milestones', $data, [
                     'id' => $milestone['number'],
                 ]);
             }
