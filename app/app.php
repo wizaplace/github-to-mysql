@@ -9,8 +9,9 @@ use Symfony\Component\Console\Output\OutputInterface;
 require_once __DIR__ . '/../vendor/autoload.php';
 
 // Load .env file if it exists
-if (is_file(getcwd() . '/.env')) {
-    $dotenv = new Dotenv(getcwd());
+$cwd = getcwd();
+if ($cwd !== false && is_file($cwd . '/.env')) {
+    $dotenv = Dotenv::create($cwd);
     $dotenv->load();
 }
 
