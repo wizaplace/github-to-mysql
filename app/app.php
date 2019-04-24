@@ -116,7 +116,7 @@ MYSQL;
                 ],
             ]);
         } catch (ClientException $e) {
-            if (!empty($issues) && $e->getResponse()->getStatusCode() === 404) {
+            if (!empty($issues) && $e->getResponse() !== null && $e->getResponse()->getStatusCode() === 404) {
                 // Stop the loop if 404
                 break;
             }
