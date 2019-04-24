@@ -52,4 +52,31 @@ class data {
             $onLabelCreation->call($db, $label);
         }
     }
+
+    public static function createMilestonesFromJson(Connection $db, string $json, \Closure $onMilestoneCreation): void {
+        $milestones = json_decode($json, true);
+        foreach ($milestones as $milestone) {
+            try {
+                $db->insert('github_milestones', [
+                    'id' => $milestone['number'],
+                    'title' => $milestone['title'],
+                    'description' => $milestone['description'],
+                    'open' => ($milestone['state'] === 'open') ? 1 : 0,
+                    'url' => $milestone['url'],
+                ]);
+            } catch (UniqueConstraintViolationException $e) {
+                $db->update('github_milestones', [
+                    'id' => $milestone['number'],
+                    'title' => $milestone['title'],
+                    'description' => $milestone['description'],
+                    'open' => ($milestone['state'] === 'open') ? 1 : 0,
+                    'url' => $milestone['url'],
+                ], [
+                    'id' => $milestone['number'],
+                ]);
+            }
+            $onMilestoneCreation->call($db, $milestone);
+        }
+    }
+
 }

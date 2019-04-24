@@ -69,21 +69,10 @@ $app->command('sync repository [--since-forever]', function ($repository, $since
             'state' => 'all',
         ],
     ]);
-    $milestones = json_decode((string) $response->getBody(), true);
-    foreach ($milestones as $milestone) {
-        $sql = <<<MYSQL
-INSERT INTO github_milestones (id, title, description, open, url) VALUES (:id, :title, :description, :open, :url)
-    ON DUPLICATE KEY UPDATE id=:id, title=:title, description=:description, open=:open, url=:url
-MYSQL;
-        $db->executeQuery($sql, [
-            'id' => $milestone['number'],
-            'title' => $milestone['title'],
-            'description' => $milestone['description'],
-            'open' => ($milestone['state'] === 'open') ? 1 : 0,
-            'url' => $milestone['url'],
-        ]);
+
+    data::createMilestonesFromJson($db, (string) $response->getBody(), function (array $milestone) use ($output) {
         $output->writeln(sprintf('Updated milestone <info>%s</info>', $milestone['title']));
-    }
+    });
 
     $since = null;
     if (!$sinceForever) {

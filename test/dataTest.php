@@ -87,4 +87,81 @@ class dataTest extends TestCase {
         $this->assertSame($testLabels, $this->db->createQueryBuilder()->select('*')->from('github_labels')->execute()->fetchAll());
     }
 
+
+    public function testCreateMilestonesFromJson(): void {
+        $testMilestones = [
+            [
+                'number' => '1',
+                'title' => 'Version 1.0.0',
+                'description' => 'A Description',
+                'state' => 'open',
+                'url' => 'https://gh.com/mile/stone/1.0.0'
+            ],
+            [
+                'number' => '2',
+                'title' => 'Version 2.0.0',
+                'description' => 'V2.0.0',
+                'state' => 'open',
+                'url' => 'https://gh.com/mile/stone/2.0.0'
+            ]
+        ];
+        $milestones = [];
+        data::createMilestonesFromJson($this->db, json_encode($testMilestones), function ($milestone) use (&$milestones) {
+            $milestones[] = $milestone;
+        });
+        $this->assertSame($testMilestones, $milestones);
+        $dbMilestones = $this->db->createQueryBuilder()->select('id as number, title, description, open as state, url')->from('github_milestones')->execute()->fetchAll();
+        foreach($dbMilestones as &$milestone) {
+            $milestone['state'] = ($milestone['state'] === '1') ? 'open' : 'closed';
+        }
+        $this->assertSame($testMilestones, $dbMilestones);
+    }
+
+    public function testReCreateMilestonesFromJson(): void {
+        $testMilestones = [
+            [
+                'number' => '1',
+                'title' => 'Version 1.0.0',
+                'description' => 'A Description',
+                'state' => 'open',
+                'url' => 'https://gh.com/mile/stone/1.0.0'
+            ],
+            [
+                'number' => '2',
+                'title' => 'Version 2.0.0',
+                'description' => 'V2.0.0',
+                'state' => 'open',
+                'url' => 'https://gh.com/mile/stone/2.0.0'
+            ]
+        ];
+
+        $additionalMilestones = [
+            [
+                'number' => '1',
+                'title' => 'V 1.0.0',
+                'description' => 'Version 1.0.0',
+                'state' => 'closed',
+                'url' => 'https://gh.com/milestone/1.0.0'
+            ],
+        ];
+
+        $milestones = [];
+        data::createMilestonesFromJson($this->db, json_encode($testMilestones), function ($milestone) use (&$milestones) {
+            $milestones[] = $milestone;
+        });
+        $this->assertSame($testMilestones, $milestones);
+
+        data::createMilestonesFromJson($this->db, json_encode($additionalMilestones), function ($milestone) use (&$milestones) {
+            $milestones[] = $milestone;
+        });
+        $this->assertSame(array_merge($testMilestones, $additionalMilestones), $milestones);
+        $testMilestones[0] = $additionalMilestones[0];
+
+        $dbMilestones = $this->db->createQueryBuilder()->select('id as number, title, description, open as state, url')->from('github_milestones')->execute()->fetchAll();
+        foreach($dbMilestones as &$milestone) {
+            $milestone['state'] = ($milestone['state'] === '1') ? 'open' : 'closed';
+        }
+
+        $this->assertSame($testMilestones, $dbMilestones);
+    }
 }
