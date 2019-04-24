@@ -4,6 +4,8 @@ namespace GitHubToMysql;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ClientException;
 
 class data {
 
@@ -29,8 +31,7 @@ class data {
         });
     }
 
-    public static function createLabelsFromJson(Connection $db, string $json, \Closure $onLabelCreation): void {
-        $labels = json_decode($json, true);
+    public static function createLabelsFromJson(Connection $db, array $labels, \Closure $onLabelCreation): void {
         foreach ($labels as $label) {
             $data = [
                 'id' => $label['id'],
@@ -49,8 +50,7 @@ class data {
         }
     }
 
-    public static function createMilestonesFromJson(Connection $db, string $json, \Closure $onMilestoneCreation): void {
-        $milestones = json_decode($json, true);
+    public static function createMilestonesFromJson(Connection $db, array $milestones, \Closure $onMilestoneCreation): void {
         foreach ($milestones as $milestone) {
             $data = [
                 'id' => $milestone['number'],
@@ -109,6 +109,37 @@ class data {
             }
 
             $onIssueCreation->call($db, $isCreation, $issue);
+        }
+    }
+
+    public static function fetchResultsForAllPages(
+        string $method, string $url, array $headers, array $query, \Closure $onPageResults): void {
+        $http = new Client();
+        $page = 1;
+        // Loop on all pages available
+        while (true) {
+            try {
+                $response = $http->request($method, $url, [
+                    'headers' => $headers,
+                    'query' => array_merge($query, [
+                        'state' => 'all',
+                        'per_page' => 100,
+                        'page' => $page,
+                    ]),
+                ]);
+            } catch (ClientException $e) {
+                if (!empty($issues) && $e->getResponse() !== null && $e->getResponse()->getStatusCode() === 404) {
+                    // Stop the loop if 404
+                    break;
+                }
+                throw $e;
+            }
+            $page++;
+            $newResults = json_decode((string) $response->getBody(), true);
+            if (empty($newResults)) {
+                break;
+            }
+            $onPageResults->call($http, $newResults);
         }
     }
 }

@@ -41,7 +41,7 @@ class dataTest extends TestCase {
             ]
         ];
         $labels = [];
-        data::createLabelsFromJson($this->db, json_encode($testLabels), function ($label) use (&$labels) {
+        data::createLabelsFromJson($this->db, $testLabels, function ($label) use (&$labels) {
             $labels[] = $label;
         });
         $this->assertSame($testLabels, $labels);
@@ -74,12 +74,12 @@ class dataTest extends TestCase {
         ];
 
         $labels = [];
-        data::createLabelsFromJson($this->db, json_encode($testLabels), function ($label) use (&$labels) {
+        data::createLabelsFromJson($this->db, $testLabels, function ($label) use (&$labels) {
             $labels[] = $label;
         });
         $this->assertSame($testLabels, $labels);
 
-        data::createLabelsFromJson($this->db, json_encode($additionalLabels), function ($label) use (&$labels) {
+        data::createLabelsFromJson($this->db, $additionalLabels, function ($label) use (&$labels) {
             $labels[] = $label;
         });
         $this->assertSame(array_merge($testLabels, $additionalLabels), $labels);
@@ -105,7 +105,7 @@ class dataTest extends TestCase {
             ]
         ];
         $milestones = [];
-        data::createMilestonesFromJson($this->db, json_encode($testMilestones), function ($milestone) use (&$milestones) {
+        data::createMilestonesFromJson($this->db, $testMilestones, function ($milestone) use (&$milestones) {
             $milestones[] = $milestone;
         });
         $this->assertSame($testMilestones, $milestones);
@@ -145,18 +145,19 @@ class dataTest extends TestCase {
         ];
 
         $milestones = [];
-        data::createMilestonesFromJson($this->db, json_encode($testMilestones), function ($milestone) use (&$milestones) {
+        data::createMilestonesFromJson($this->db, $testMilestones, function ($milestone) use (&$milestones) {
             $milestones[] = $milestone;
         });
         $this->assertSame($testMilestones, $milestones);
 
-        data::createMilestonesFromJson($this->db, json_encode($additionalMilestones), function ($milestone) use (&$milestones) {
+        data::createMilestonesFromJson($this->db, $additionalMilestones, function ($milestone) use (&$milestones) {
             $milestones[] = $milestone;
         });
         $this->assertSame(array_merge($testMilestones, $additionalMilestones), $milestones);
         $testMilestones[0] = $additionalMilestones[0];
 
         $dbMilestones = $this->db->createQueryBuilder()->select('id as number, title, description, open as state, url')->from('github_milestones')->execute()->fetchAll();
+
         foreach($dbMilestones as &$milestone) {
             $milestone['state'] = ($milestone['state'] === '1') ? 'open' : 'closed';
         }

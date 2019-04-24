@@ -1,8 +1,6 @@
 <?php
 
 use Dotenv\Dotenv;
-use GuzzleHttp\Client;
-use GuzzleHttp\Exception\ClientException;
 use Silly\Application;
 use Symfony\Component\Console\Output\OutputInterface;
 use GitHubToMysql\data;
@@ -42,78 +40,51 @@ $app->command('intro', function (OutputInterface $output) {
 })->descriptions('Displays an introduction on how to use this application.');
 
 $app->command('sync repository [--since-forever]', function ($repository, $sinceForever = null, OutputInterface $output) use ($db) {
-    $http = new Client();
-
     // Labels
-    $response = $http->request('GET', "https://api.github.com/repos/$repository/labels", [
-        'headers' => [
+    data::fetchResultsForAllPages(
+        'GET',
+        "https://api.github.com/repos/$repository/labels",
+        [
             'Authorization' => 'token ' . getenv('GITHUB_TOKEN'),
             'Accept' => 'application/vnd.github.symmetra-preview+json',
-        ],
-        'query' => [
-            'per_page' => 100,
-        ],
-    ]);
-
-    data::createLabelsFromJson($db, (string) $response->getBody(), function (array $label) use ($output) {
-        $output->writeln(sprintf('Updated label <info>%s</info>', $label['name']));
-    });
+        ], [], function (array $labels) use ($output, $db) {
+            data::createLabelsFromJson($db, $labels, function (array $label) use ($output) {
+                $output->writeln(sprintf('Updated label <info>%s</info>', $label['name']));
+            });
+        }
+    );
 
     // Milestones
-    $response = $http->request('GET', "https://api.github.com/repos/$repository/milestones", [
-        'headers' => [
+    data::fetchResultsForAllPages(
+        'GET',
+        "https://api.github.com/repos/$repository/milestones",
+        [
+            'Authorization' => 'token ' . getenv('GITHUB_TOKEN'),
+        ], [], function (array $milestones) use ($output, $db) {
+            data::createMilestonesFromJson($db, $milestones, function (array $milestone) use ($output) {
+                $output->writeln(sprintf('Updated milestone <info>%s</info>', $milestone['title']));
+            });
+        }
+    );
+
+    // Issues
+    data::fetchResultsForAllPages(
+        'GET',
+        "https://api.github.com/repos/$repository/issues",
+        [
             'Authorization' => 'token ' . getenv('GITHUB_TOKEN'),
         ],
-        'query' => [
-            'per_page' => 100,
-            'state' => 'all',
+        [
+            'since' => (!$sinceForever) ? date('c', strtotime('-3 hours')) : null,
         ],
-    ]);
-
-    data::createMilestonesFromJson($db, (string) $response->getBody(), function (array $milestone) use ($output) {
-        $output->writeln(sprintf('Updated milestone <info>%s</info>', $milestone['title']));
-    });
-
-    $since = null;
-    if (!$sinceForever) {
-        // Issues updated in the last hours
-        $since = date('c', strtotime('-3 hours'));
-    }
-    $page = 1;
-    $issues = [];
-    // Loop on all pages available
-    while (true) {
-        try {
-            $response = $http->request('GET', "https://api.github.com/repos/$repository/issues", [
-                'headers' => [
-                    'Authorization' => 'token ' . getenv('GITHUB_TOKEN'),
-                ],
-                'query' => [
-                    'state' => 'all',
-                    'since' => $since,
-                    'per_page' => 100,
-                    'page' => $page,
-                ],
-            ]);
-        } catch (ClientException $e) {
-            if (!empty($issues) && $e->getResponse() !== null && $e->getResponse()->getStatusCode() === 404) {
-                // Stop the loop if 404
-                break;
-            }
-            throw $e;
+        function (array $issues) use ($output, $db) {
+            $output->writeln(sprintf('<info>%d</info> issues to process', count($issues)));
+            data::createIssues($db, $issues, function (bool $isCreation, array $issue) use ($output) {
+                $output->writeln(sprintf(($isCreation ? 'Created' : 'Updated') . ' issue #%d <info>%s</info>', $issue['number'], $issue['title']));
+            });
         }
-        $newIssues = json_decode((string) $response->getBody(), true);
-        if (empty($newIssues)) {
-            break;
-        }
-        $issues = array_merge($issues, $newIssues);
-        $page++;
-    }
-    $output->writeln(sprintf('<info>%d</info> issues to process', count($issues)));
+    );
 
-    data::createIssues($db, $issues, function (array $issue, bool $isCreation) use ($output) {
-        $output->writeln(sprintf(($isCreation ? 'Created' : 'Updated') . ' issue #%d <info>%s</info>', $issue['number'], $issue['title']));
-    });
 });
 
 $app->command('db-init [--force]', function ($force, OutputInterface $output) use ($db) {
