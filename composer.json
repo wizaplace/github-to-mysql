@@ -14,10 +14,16 @@
         "issues": "https://github.com/wizaplace/github-to-mysql/issues",
         "source": "https://github.com/wizaplace/github-to-mysql"
     },
+    "scripts": {
+        "phpstan": "phpstan analyse --no-interaction --level=max ./app"
+    },
     "require": {
         "mnapoli/silly": "^1.7",
         "guzzlehttp/guzzle": "^6.3",
         "vlucas/phpdotenv": "^3.3",
         "doctrine/dbal": "^2.9"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^0.11.5"
     }
 }
