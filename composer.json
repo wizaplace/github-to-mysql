@@ -15,7 +15,7 @@
         "source": "https://github.com/wizaplace/github-to-mysql"
     },
     "scripts": {
-        "phpstan": "phpstan analyse --no-interaction --level=max ./app",
+        "phpstan": "phpstan analyse --no-interaction",
         "phpunit": "phpunit --testdox"
     },
     "require": {
@@ -43,7 +43,8 @@
         "exclude": [
             "/test",
             "/.env",
-            "/phpunit.xml"
+            "/phpunit.xml",
+            "/phpstan.neon.dist"
         ]
     }
 }
