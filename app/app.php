@@ -5,6 +5,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
 use Silly\Application;
 use Symfony\Component\Console\Output\OutputInterface;
+use GitHubToMysql\data;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -53,20 +54,10 @@ $app->command('sync repository [--since-forever]', function ($repository, $since
             'per_page' => 100,
         ],
     ]);
-    $labels = json_decode((string) $response->getBody(), true);
-    foreach ($labels as $label) {
-        $sql = <<<MYSQL
-INSERT INTO github_labels (id, url, name, color) VALUES (:id, :url, :name, :color)
-    ON DUPLICATE KEY UPDATE id=:id, url=:url, name=:name, color=:color
-MYSQL;
-        $db->executeQuery($sql, [
-            'id' => $label['id'],
-            'url' => $label['url'],
-            'name' => $label['name'],
-            'color' => $label['color'],
-        ]);
+
+    data::createLabelsFromJson($db, (string) $response->getBody(), function (array $label) use ($output) {
         $output->writeln(sprintf('Updated label <info>%s</info>', $label['name']));
-    }
+    });
 
     // Milestones
     $response = $http->request('GET', "https://api.github.com/repos/$repository/milestones", [
@@ -176,21 +167,10 @@ MYSQL;
 });
 
 $app->command('db-init [--force]', function ($force, OutputInterface $output) use ($db) {
-    $targetSchema = require __DIR__ . '/db-schema.php';
-    $currentSchema = $db->getSchemaManager()->createSchema();
-
-    $migrationQueries = $currentSchema->getMigrateToSql($targetSchema, $db->getDatabasePlatform());
-
-    $db->transactional(function () use ($migrationQueries, $force, $output, $db) {
-        foreach ($migrationQueries as $query) {
-            $output->writeln(sprintf('Running <info>%s</info>', $query));
-            if ($force) {
-                $db->exec($query);
-            }
-        }
-        if (empty($migrationQueries)) {
-            $output->writeln('<info>The database is up to date</info>');
-        }
+    data::createSchema($db, $force, function (string $query) use ($output) {
+        $output->writeln(sprintf('Running <info>%s</info>', $query));
+    }, function () use ($output) {
+        $output->writeln('<info>The database is up to date</info>');
     });
 
     if (!$force) {
