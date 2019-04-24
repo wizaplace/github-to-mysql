@@ -46,5 +46,8 @@
             "/phpunit.xml",
             "/phpstan.neon.dist"
         ]
-    }
+    },
+    "bin": [
+        "github-to-mysql"
+    ]
 }
