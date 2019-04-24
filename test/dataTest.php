@@ -87,7 +87,6 @@ class dataTest extends TestCase {
         $this->assertSame($testLabels, $this->db->createQueryBuilder()->select('*')->from('github_labels')->execute()->fetchAll());
     }
 
-
     public function testCreateMilestonesFromJson(): void {
         $testMilestones = [
             [
@@ -164,4 +163,107 @@ class dataTest extends TestCase {
 
         $this->assertSame($testMilestones, $dbMilestones);
     }
+
+    public function testCreateIssues(): void {
+        $testIssues = [
+            [
+                'number' => '1',
+                'title' => 'A bug in version 1.0.0',
+                'user' => [
+                    'login' => 'williamdes',
+                    'avatar_url' => 'https://github.com/images/error/octocat_happy.gif'
+                ],
+                'created_at' => '2019-04-24T13:33:48Z',
+                'updated_at' => '2019-04-24T13:33:48Z',
+                'closed_at' => null,
+                'pull_request' => [
+                    "url" => "https://api.github.com/repos/octocat/Hello-World/pulls/1347",
+                    "html_url" => "https://github.com/octocat/Hello-World/pull/1347",
+                    "diff_url" => "https://github.com/octocat/Hello-World/pull/1347.diff",
+                    "patch_url" => "https://github.com/octocat/Hello-World/pull/1347.patch",
+                ],
+                'state' => 'open',
+                'milestone' => [
+                    'number' => '1',
+                ],
+                "labels" => []
+            ],
+            [
+                'number' => '2',
+                'title' => 'Another bug in version 2.0.0',
+                'user' => [
+                    'login' => 'williamdes',
+                    'avatar_url' => 'https://github.com/images/error/octocat_happy.gif'
+                ],
+                'created_at' => '2019-04-24T13:50:48Z',
+                'updated_at' => '2019-04-24T13:50:48Z',
+                'closed_at' => null,
+                'state' => 'open',
+                'milestone' => [
+                    'number' => '2',
+                ],
+                "labels" => [
+                    [
+                        "id" => '208045946',
+                        "node_id" => "MDU6TGFiZWwyMDgwNDU5NDY=",
+                        "url" => "https://api.github.com/repos/octocat/Hello-World/labels/bug",
+                        "name" => "bug",
+                        "description" => "Something isn't working",
+                        "color" => "f29513",
+                        "default" => true
+                    ]
+                ],
+            ],
+            [
+                'number' => '3',
+                'title' => 'Another bug in version 2.1.0',
+                'user' => [
+                    'login' => 'williamdes',
+                    'avatar_url' => 'https://github.com/images/error/octocat_happy.gif'
+                ],
+                'created_at' => '2019-04-24T13:50:48Z',
+                'updated_at' => '2019-04-24T13:50:48Z',
+                'closed_at' => '2019-04-24T13:50:48Z',
+                'state' => 'closed',
+                'milestone' => [
+                    'number' => '3',
+                ],
+                "labels" => [
+                    [
+                        "id" => '208045946',
+                        "node_id" => "MDU6TGFiZWwyMDgwNDU5NDY=",
+                        "url" => "https://api.github.com/repos/octocat/Hello-World/labels/bug",
+                        "name" => "bug",
+                        "description" => "Something isn't working",
+                        "color" => "f29513",
+                        "default" => true
+                    ]
+                ],
+            ],
+        ];
+        $issues = [];
+        $phpunit = $this;
+        data::createIssues($this->db, $testIssues, function (bool $isCreation, array $issue) use (&$issues, $phpunit) {
+            $issues[] = $issue;
+            $phpunit->assertTrue($isCreation);
+        });
+        $this->assertSame($testIssues, $issues);
+        $dbIssues = $this->db->createQueryBuilder()->select('*')->from('github_issues')->execute()->fetchAll();
+        foreach($testIssues as &$issue) {
+            $issue = [// Re create the array like in the database (yes, this is partial data)
+                'id' => $issue['number'],
+                'milestone_id' => $issue['milestone']['number'],
+                'title' => $issue['title'],
+                'open' => ($issue['state'] === 'open') ? '1' : '0',
+                'author' => $issue['user']['login'],
+                'author_avatar_url' => $issue['user']['avatar_url'],
+                'created_at' => date('Y-m-d H:i:s', strtotime($issue['created_at'])),
+                'updated_at' => date('Y-m-d H:i:s', strtotime($issue['updated_at'])),
+                'closed_at' => $issue['closed_at'] ? date('Y-m-d H:i:s', strtotime($issue['closed_at'])) : null,
+                'is_pull_request' => isset($issue['pull_request']) ? '1' : '0',
+            ];
+        }
+        $this->assertSame($testIssues, $dbIssues);
+    }
+
 }

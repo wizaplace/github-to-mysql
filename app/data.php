@@ -79,4 +79,45 @@ class data {
         }
     }
 
+    public static function createIssues(Connection $db, array $issues, \Closure $onIssueCreation): void {
+        foreach ($issues as $issue) {
+            $data = [
+                'id' => $issue['number'],
+                'title' => $issue['title'],
+                'open' => ($issue['state'] === 'open') ? 1 : 0,
+                'author' => $issue['user']['login'],
+                'author_avatar_url' => $issue['user']['avatar_url'],
+                'created_at' => date('Y-m-d H:i:s', strtotime($issue['created_at'])),
+                'updated_at' => date('Y-m-d H:i:s', strtotime($issue['updated_at'])),
+                'closed_at' => $issue['closed_at'] ? date('Y-m-d H:i:s', strtotime($issue['closed_at'])) : null,
+                'is_pull_request' => isset($issue['pull_request']) ? 1 : 0,
+                'milestone_id' => $issue['milestone']['number'],
+            ];
+
+            $isCreation = true;
+            try {
+                $db->insert('github_issues', $data);
+            } catch (UniqueConstraintViolationException $e) {
+                $isCreation = false;
+                $db->update('github_issues', $data, [
+                    'id' => $issue['number'],
+                ]);
+            }
+
+            // Remove all label links
+            $db->delete('github_issue_labels', [
+                'issue_id' => $issue['number'],
+            ]);
+
+            // Re-insert them
+            foreach ($issue['labels'] as $label) {
+                $db->insert('github_issue_labels', [
+                    'issue_id' => $issue['number'],
+                    'label_id' => $label['id'],
+                ]);
+            }
+
+            $onIssueCreation->call($db, $isCreation, $issue);
+        }
+    }
 }

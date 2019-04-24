@@ -111,48 +111,9 @@ $app->command('sync repository [--since-forever]', function ($repository, $since
     }
     $output->writeln(sprintf('<info>%d</info> issues to process', count($issues)));
 
-    foreach ($issues as $issue) {
-        $sql = <<<MYSQL
-INSERT INTO github_issues (id, title, open, author, author_avatar_url, created_at, updated_at, closed_at, is_pull_request, milestone_id)
-    VALUES (:id, :title, :open, :author, :author_avatar_url, :created_at, :updated_at, :closed_at, :is_pull_request, :milestone_id)
-    ON DUPLICATE KEY UPDATE
-        id=:id,
-        title=:title,
-        open=:open,
-        author=:author,
-        author_avatar_url=:author_avatar_url,
-        created_at=:created_at,
-        updated_at=:updated_at,
-        closed_at=:closed_at,
-        is_pull_request=:is_pull_request,
-        milestone_id=:milestone_id
-MYSQL;
-        $db->executeQuery($sql, [
-            'id' => $issue['number'],
-            'title' => $issue['title'],
-            'open' => ($issue['state'] === 'open') ? 1 : 0,
-            'author' => $issue['user']['login'],
-            'author_avatar_url' => $issue['user']['avatar_url'],
-            'created_at' => date('Y-m-d H:i:s', strtotime($issue['created_at'])),
-            'updated_at' => date('Y-m-d H:i:s', strtotime($issue['updated_at'])),
-            'closed_at' => $issue['closed_at'] ? date('Y-m-d H:i:s', strtotime($issue['closed_at'])) : null,
-            'is_pull_request' => isset($issue['pull_request']) ? 1 : 0,
-            'milestone_id' => $issue['milestone']['number'],
-        ]);
-        $output->writeln(sprintf('Updated issue #%d <info>%s</info>', $issue['number'], $issue['title']));
-
-        // Remove all label links
-        $db->delete('github_issue_labels', [
-            'issue_id' => $issue['number'],
-        ]);
-        // Re-insert them
-        foreach ($issue['labels'] as $label) {
-            $db->insert('github_issue_labels', [
-                'issue_id' => $issue['number'],
-                'label_id' => $label['id'],
-            ]);
-        }
-    }
+    data::createIssues($db, $issues, function (array $issue, bool $isCreation) use ($output) {
+        $output->writeln(sprintf(($isCreation ? 'Created' : 'Updated') . ' issue #%d <info>%s</info>', $issue['number'], $issue['title']));
+    });
 });
 
 $app->command('db-init [--force]', function ($force, OutputInterface $output) use ($db) {
