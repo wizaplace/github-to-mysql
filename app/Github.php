@@ -7,7 +7,7 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
 
-class data {
+class Github {
 
     public static function createLabelsFromJson(Connection $db, array $labels, \Closure $onLabelCreation): void {
         foreach ($labels as $label) {

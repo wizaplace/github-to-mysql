@@ -4,10 +4,10 @@ namespace GitHubToMysql\Tests;
 
 use PHPUnit\Framework\TestCase;
 use Doctrine\DBAL\DriverManager;
-use GitHubToMysql\data;
+use GitHubToMysql\Github;
 use GitHubToMysql\DbSchema;
 
-class DataTest extends TestCase {
+class GithubTest extends TestCase {
 
     /**
      * The connection
@@ -42,7 +42,7 @@ class DataTest extends TestCase {
             ]
         ];
         $labels = [];
-        data::createLabelsFromJson($this->db, $testLabels, function ($label) use (&$labels) {
+        Github::createLabelsFromJson($this->db, $testLabels, function ($label) use (&$labels) {
             $labels[] = $label;
         });
         $this->assertSame($testLabels, $labels);
@@ -75,12 +75,12 @@ class DataTest extends TestCase {
         ];
 
         $labels = [];
-        data::createLabelsFromJson($this->db, $testLabels, function ($label) use (&$labels) {
+        Github::createLabelsFromJson($this->db, $testLabels, function ($label) use (&$labels) {
             $labels[] = $label;
         });
         $this->assertSame($testLabels, $labels);
 
-        data::createLabelsFromJson($this->db, $additionalLabels, function ($label) use (&$labels) {
+        Github::createLabelsFromJson($this->db, $additionalLabels, function ($label) use (&$labels) {
             $labels[] = $label;
         });
         $this->assertSame(array_merge($testLabels, $additionalLabels), $labels);
@@ -106,7 +106,7 @@ class DataTest extends TestCase {
             ]
         ];
         $milestones = [];
-        data::createMilestonesFromJson($this->db, $testMilestones, function ($milestone) use (&$milestones) {
+        Github::createMilestonesFromJson($this->db, $testMilestones, function ($milestone) use (&$milestones) {
             $milestones[] = $milestone;
         });
         $this->assertSame($testMilestones, $milestones);
@@ -146,12 +146,12 @@ class DataTest extends TestCase {
         ];
 
         $milestones = [];
-        data::createMilestonesFromJson($this->db, $testMilestones, function ($milestone) use (&$milestones) {
+        Github::createMilestonesFromJson($this->db, $testMilestones, function ($milestone) use (&$milestones) {
             $milestones[] = $milestone;
         });
         $this->assertSame($testMilestones, $milestones);
 
-        data::createMilestonesFromJson($this->db, $additionalMilestones, function ($milestone) use (&$milestones) {
+        Github::createMilestonesFromJson($this->db, $additionalMilestones, function ($milestone) use (&$milestones) {
             $milestones[] = $milestone;
         });
         $this->assertSame(array_merge($testMilestones, $additionalMilestones), $milestones);
@@ -245,7 +245,7 @@ class DataTest extends TestCase {
         ];
         $issues = [];
         $phpunit = $this;
-        data::createIssues($this->db, $testIssues, function (bool $isCreation, array $issue) use (&$issues, $phpunit) {
+        Github::createIssues($this->db, $testIssues, function (bool $isCreation, array $issue) use (&$issues, $phpunit) {
             $issues[] = $issue;
             $phpunit->assertTrue($isCreation);
         });

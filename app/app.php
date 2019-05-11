@@ -3,7 +3,7 @@
 use Dotenv\Dotenv;
 use Silly\Application;
 use Symfony\Component\Console\Output\OutputInterface;
-use GitHubToMysql\data;
+use GitHubToMysql\Github;
 use GitHubToMysql\DbSchema;
 
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -42,34 +42,34 @@ $app->command('intro', function (OutputInterface $output) {
 
 $app->command('sync repository [--since-forever]', function ($repository, $sinceForever = null, OutputInterface $output) use ($db) {
     // Labels
-    data::fetchResultsForAllPages(
+    Github::fetchResultsForAllPages(
         'GET',
         "https://api.github.com/repos/$repository/labels",
         [
             'Authorization' => 'token ' . getenv('GITHUB_TOKEN'),
             'Accept' => 'application/vnd.github.symmetra-preview+json',
         ], [], function (array $labels) use ($output, $db) {
-            data::createLabelsFromJson($db, $labels, function (array $label) use ($output) {
+            Github::createLabelsFromJson($db, $labels, function (array $label) use ($output) {
                 $output->writeln(sprintf('Updated label <info>%s</info>', $label['name']));
             });
         }
     );
 
     // Milestones
-    data::fetchResultsForAllPages(
+    Github::fetchResultsForAllPages(
         'GET',
         "https://api.github.com/repos/$repository/milestones",
         [
             'Authorization' => 'token ' . getenv('GITHUB_TOKEN'),
         ], [], function (array $milestones) use ($output, $db) {
-            data::createMilestonesFromJson($db, $milestones, function (array $milestone) use ($output) {
+            Github::createMilestonesFromJson($db, $milestones, function (array $milestone) use ($output) {
                 $output->writeln(sprintf('Updated milestone <info>%s</info>', $milestone['title']));
             });
         }
     );
 
     // Issues
-    data::fetchResultsForAllPages(
+    Github::fetchResultsForAllPages(
         'GET',
         "https://api.github.com/repos/$repository/issues",
         [
@@ -80,7 +80,7 @@ $app->command('sync repository [--since-forever]', function ($repository, $since
         ],
         function (array $issues) use ($output, $db) {
             $output->writeln(sprintf('<info>%d</info> issues to process', count($issues)));
-            data::createIssues($db, $issues, function (bool $isCreation, array $issue) use ($output) {
+            Github::createIssues($db, $issues, function (bool $isCreation, array $issue) use ($output) {
                 $output->writeln(sprintf(($isCreation ? 'Created' : 'Updated') . ' issue #%d <info>%s</info>', $issue['number'], $issue['title']));
             });
         }
