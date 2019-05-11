@@ -18,19 +18,6 @@ if ($cwd !== false && is_file($cwd . '/.env')) {
 $app = new Application;
 $app->setDefaultCommand('intro');
 
-// DB
-$dbConfig = new \Doctrine\DBAL\Configuration();
-$dbConfig->setFilterSchemaAssetsExpression('/^github_/');
-$db = \Doctrine\DBAL\DriverManager::getConnection([
-    'dbname' => getenv('DB_NAME'),
-    'user' => getenv('DB_USER') ?: 'root',
-    'password' => getenv('DB_PASSWORD') ?: '',
-    'host' => getenv('DB_HOST') ?: 'localhost',
-    'port' => getenv('DB_PORT') ?: 3306,
-    'driver' => 'pdo_mysql',
-    'charset' => 'utf8mb4',
-], $dbConfig);
-
 $app->command('intro', function (OutputInterface $output) {
     $output->writeln('<comment>Getting started</comment>');
     $output->writeln('- copy the <info>.env.dist</info> file to <info>.env</info> and set up the required configuration parameters.');
@@ -40,7 +27,7 @@ $app->command('intro', function (OutputInterface $output) {
     $output->writeln('Then you can (for example) setup a cron to run every hour without the <info>--since-forever</info> flag.');
 })->descriptions('Displays an introduction on how to use this application.');
 
-$app->command('sync repository [--since-forever]', function ($repository, $sinceForever = null, OutputInterface $output) use ($db) {
+$app->command('sync repository [--since-forever]', function ($repository, $sinceForever = null, OutputInterface $output) {
     // Labels
     Github::fetchResultsForAllPages(
         'GET',
@@ -48,8 +35,8 @@ $app->command('sync repository [--since-forever]', function ($repository, $since
         [
             'Authorization' => 'token ' . getenv('GITHUB_TOKEN'),
             'Accept' => 'application/vnd.github.symmetra-preview+json',
-        ], [], function (array $labels) use ($output, $db) {
-            Github::createLabelsFromJson($db, $labels, function (array $label) use ($output) {
+        ], [], function (array $labels) use ($output) {
+            Github::createLabelsFromJson($labels, function (array $label) use ($output) {
                 $output->writeln(sprintf('Updated label <info>%s</info>', $label['name']));
             });
         }
@@ -61,8 +48,8 @@ $app->command('sync repository [--since-forever]', function ($repository, $since
         "https://api.github.com/repos/$repository/milestones",
         [
             'Authorization' => 'token ' . getenv('GITHUB_TOKEN'),
-        ], [], function (array $milestones) use ($output, $db) {
-            Github::createMilestonesFromJson($db, $milestones, function (array $milestone) use ($output) {
+        ], [], function (array $milestones) use ($output) {
+            Github::createMilestonesFromJson($milestones, function (array $milestone) use ($output) {
                 $output->writeln(sprintf('Updated milestone <info>%s</info>', $milestone['title']));
             });
         }
@@ -78,9 +65,9 @@ $app->command('sync repository [--since-forever]', function ($repository, $since
         [
             'since' => (!$sinceForever) ? date('c', strtotime('-3 hours')) : null,
         ],
-        function (array $issues) use ($output, $db) {
+        function (array $issues) use ($output) {
             $output->writeln(sprintf('<info>%d</info> issues to process', count($issues)));
-            Github::createIssues($db, $issues, function (bool $isCreation, array $issue) use ($output) {
+            Github::createIssues($issues, function (bool $isCreation, array $issue) use ($output) {
                 $output->writeln(sprintf(($isCreation ? 'Created' : 'Updated') . ' issue #%d <info>%s</info>', $issue['number'], $issue['title']));
             });
         }
@@ -88,8 +75,8 @@ $app->command('sync repository [--since-forever]', function ($repository, $since
 
 });
 
-$app->command('db-init [--force]', function ($force, OutputInterface $output) use ($db) {
-    Database::createSchema($db, $force, function (string $query) use ($output) {
+$app->command('db-init [--force]', function ($force, OutputInterface $output) {
+    Database::createSchema($force, function (string $query) use ($output) {
         $output->writeln(sprintf('Running <info>%s</info>', $query));
     }, function () use ($output) {
         $output->writeln('<info>The database is up to date</info>');

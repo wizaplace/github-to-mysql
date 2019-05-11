@@ -4,11 +4,44 @@ namespace GitHubToMysql;
 
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Configuration;
+use Doctrine\DBAL\DriverManager;
 
 /**
  * The database schema class
  */
 class Database {
+
+    /**
+     * The connection
+     *
+     * @var Connection
+     */
+    private static $connection = null;
+
+    /**
+     * Connect to the database or return the connection
+     *
+     * @param string $driver The driver (,pdo_mysql, pdo_sqlite, ..)
+     * @return Connection The connection
+     */
+    public static function connect(string $driver = 'pdo_mysql'): Connection {
+        if (self::$connection === null) {
+            // DB
+            $dbConfig = new Configuration();
+            $dbConfig->setFilterSchemaAssetsExpression('/^github_/');
+            self::$connection = DriverManager::getConnection([
+                'dbname' => getenv('DB_NAME'),
+                'user' => getenv('DB_USER') ?: 'root',
+                'password' => getenv('DB_PASSWORD') ?: '',
+                'host' => getenv('DB_HOST') ?: 'localhost',
+                'port' => getenv('DB_PORT') ?: 3306,
+                'driver' => $driver,
+                'charset' => 'utf8mb4',
+            ], $dbConfig);
+        }
+        return self::$connection;
+    }
 
     /**
      * Get the database schema
@@ -76,19 +109,18 @@ class Database {
     /**
      * Create the database using the schema
      *
-     * @param Connection $db The conexion
      * @param boolean $force Execute the queries or not
      * @param \Closure $onRunning The callback to be called with db and query as string
      * @param \Closure $onUpToDate The callback to be called with db as only argument
      * @return void
      */
     public static function createSchema(
-        Connection $db,
         bool $force,
         \Closure $onRunning = null,
         \Closure $onUpToDate = null
     ): void {
         $targetSchema = self::getSchema();
+        $db = self::connect();
         $currentSchema = $db->getSchemaManager()->createSchema();
 
         $migrationQueries = $currentSchema->getMigrateToSql($targetSchema, $db->getDatabasePlatform());

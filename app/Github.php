@@ -2,14 +2,13 @@
 
 namespace GitHubToMysql;
 
-use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
 
 class Github {
 
-    public static function createLabelsFromJson(Connection $db, array $labels, \Closure $onLabelCreation): void {
+    public static function createLabelsFromJson(array $labels, \Closure $onLabelCreation): void {
         foreach ($labels as $label) {
             $data = [
                 'id' => $label['id'],
@@ -18,17 +17,17 @@ class Github {
                 'color' => $label['color'],
             ];
             try {
-                $db->insert('github_labels', $data);
+                Database::connect()->insert('github_labels', $data);
             } catch (UniqueConstraintViolationException $e) {
-                $db->update('github_labels', $data, [
+                Database::connect()->update('github_labels', $data, [
                     'id' => $label['id'],
                 ]);
             }
-            $onLabelCreation->call($db, $label);
+            $onLabelCreation->call(Database::connect(), $label);
         }
     }
 
-    public static function createMilestonesFromJson(Connection $db, array $milestones, \Closure $onMilestoneCreation): void {
+    public static function createMilestonesFromJson(array $milestones, \Closure $onMilestoneCreation): void {
         foreach ($milestones as $milestone) {
             $data = [
                 'id' => $milestone['number'],
@@ -38,17 +37,17 @@ class Github {
                 'url' => $milestone['url'],
             ];
             try {
-                $db->insert('github_milestones', $data);
+                Database::connect()->insert('github_milestones', $data);
             } catch (UniqueConstraintViolationException $e) {
-                $db->update('github_milestones', $data, [
+                Database::connect()->update('github_milestones', $data, [
                     'id' => $milestone['number'],
                 ]);
             }
-            $onMilestoneCreation->call($db, $milestone);
+            $onMilestoneCreation->call(Database::connect(), $milestone);
         }
     }
 
-    public static function createIssues(Connection $db, array $issues, \Closure $onIssueCreation): void {
+    public static function createIssues(array $issues, \Closure $onIssueCreation): void {
         foreach ($issues as $issue) {
             $data = [
                 'id' => $issue['number'],
@@ -65,28 +64,28 @@ class Github {
 
             $isCreation = true;
             try {
-                $db->insert('github_issues', $data);
+                Database::connect()->insert('github_issues', $data);
             } catch (UniqueConstraintViolationException $e) {
                 $isCreation = false;
-                $db->update('github_issues', $data, [
+                Database::connect()->update('github_issues', $data, [
                     'id' => $issue['number'],
                 ]);
             }
 
             // Remove all label links
-            $db->delete('github_issue_labels', [
+            Database::connect()->delete('github_issue_labels', [
                 'issue_id' => $issue['number'],
             ]);
 
             // Re-insert them
             foreach ($issue['labels'] as $label) {
-                $db->insert('github_issue_labels', [
+                Database::connect()->insert('github_issue_labels', [
                     'issue_id' => $issue['number'],
                     'label_id' => $label['id'],
                 ]);
             }
 
-            $onIssueCreation->call($db, $isCreation, $issue);
+            $onIssueCreation->call(Database::connect(), $isCreation, $issue);
         }
     }
 

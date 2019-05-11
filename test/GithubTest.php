@@ -3,27 +3,14 @@
 namespace GitHubToMysql\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Doctrine\DBAL\DriverManager;
 use GitHubToMysql\Github;
 use GitHubToMysql\Database;
 
 class GithubTest extends TestCase {
 
-    /**
-     * The connection
-     *
-     * @var \Doctrine\DBAL\Connection
-     */
-    private $db;
-
     public function setUp(): void {
-        $dbConfig = new \Doctrine\DBAL\Configuration();
-        $dbConfig->setFilterSchemaAssetsExpression('/^github_/');
-        $this->db = DriverManager::getConnection([
-            'driver' => 'pdo_sqlite',
-        ], $dbConfig);
-
-        Database::createSchema($this->db, true);
+        Database::connect('pdo_sqlite');
+        Database::createSchema(true);
     }
 
     public function testCreateLabelsFromJson(): void {
@@ -42,11 +29,11 @@ class GithubTest extends TestCase {
             ]
         ];
         $labels = [];
-        Github::createLabelsFromJson($this->db, $testLabels, function ($label) use (&$labels) {
+        Github::createLabelsFromJson($testLabels, function ($label) use (&$labels) {
             $labels[] = $label;
         });
         $this->assertSame($testLabels, $labels);
-        $this->assertSame($testLabels, $this->db->createQueryBuilder()->select('*')->from('github_labels')->execute()->fetchAll());
+        $this->assertSame($testLabels, Database::connect()->createQueryBuilder()->select('*')->from('github_labels')->execute()->fetchAll());
     }
 
     public function testReCreateLabelsFromJson(): void {
@@ -75,17 +62,17 @@ class GithubTest extends TestCase {
         ];
 
         $labels = [];
-        Github::createLabelsFromJson($this->db, $testLabels, function ($label) use (&$labels) {
+        Github::createLabelsFromJson($testLabels, function ($label) use (&$labels) {
             $labels[] = $label;
         });
         $this->assertSame($testLabels, $labels);
 
-        Github::createLabelsFromJson($this->db, $additionalLabels, function ($label) use (&$labels) {
+        Github::createLabelsFromJson($additionalLabels, function ($label) use (&$labels) {
             $labels[] = $label;
         });
         $this->assertSame(array_merge($testLabels, $additionalLabels), $labels);
         $testLabels[0] = $additionalLabels[0];
-        $this->assertSame($testLabels, $this->db->createQueryBuilder()->select('*')->from('github_labels')->execute()->fetchAll());
+        $this->assertSame($testLabels, Database::connect()->createQueryBuilder()->select('*')->from('github_labels')->execute()->fetchAll());
     }
 
     public function testCreateMilestonesFromJson(): void {
@@ -106,11 +93,11 @@ class GithubTest extends TestCase {
             ]
         ];
         $milestones = [];
-        Github::createMilestonesFromJson($this->db, $testMilestones, function ($milestone) use (&$milestones) {
+        Github::createMilestonesFromJson($testMilestones, function ($milestone) use (&$milestones) {
             $milestones[] = $milestone;
         });
         $this->assertSame($testMilestones, $milestones);
-        $dbMilestones = $this->db->createQueryBuilder()->select('id as number, title, description, open as state, url')->from('github_milestones')->execute()->fetchAll();
+        $dbMilestones = Database::connect()->createQueryBuilder()->select('id as number, title, description, open as state, url')->from('github_milestones')->execute()->fetchAll();
         foreach($dbMilestones as &$milestone) {
             $milestone['state'] = ($milestone['state'] === '1') ? 'open' : 'closed';
         }
@@ -146,18 +133,18 @@ class GithubTest extends TestCase {
         ];
 
         $milestones = [];
-        Github::createMilestonesFromJson($this->db, $testMilestones, function ($milestone) use (&$milestones) {
+        Github::createMilestonesFromJson($testMilestones, function ($milestone) use (&$milestones) {
             $milestones[] = $milestone;
         });
         $this->assertSame($testMilestones, $milestones);
 
-        Github::createMilestonesFromJson($this->db, $additionalMilestones, function ($milestone) use (&$milestones) {
+        Github::createMilestonesFromJson($additionalMilestones, function ($milestone) use (&$milestones) {
             $milestones[] = $milestone;
         });
         $this->assertSame(array_merge($testMilestones, $additionalMilestones), $milestones);
         $testMilestones[0] = $additionalMilestones[0];
 
-        $dbMilestones = $this->db->createQueryBuilder()->select('id as number, title, description, open as state, url')->from('github_milestones')->execute()->fetchAll();
+        $dbMilestones = Database::connect()->createQueryBuilder()->select('id as number, title, description, open as state, url')->from('github_milestones')->execute()->fetchAll();
 
         foreach($dbMilestones as &$milestone) {
             $milestone['state'] = ($milestone['state'] === '1') ? 'open' : 'closed';
@@ -245,12 +232,12 @@ class GithubTest extends TestCase {
         ];
         $issues = [];
         $phpunit = $this;
-        Github::createIssues($this->db, $testIssues, function (bool $isCreation, array $issue) use (&$issues, $phpunit) {
+        Github::createIssues($testIssues, function (bool $isCreation, array $issue) use (&$issues, $phpunit) {
             $issues[] = $issue;
             $phpunit->assertTrue($isCreation);
         });
         $this->assertSame($testIssues, $issues);
-        $dbIssues = $this->db->createQueryBuilder()->select('*')->from('github_issues')->execute()->fetchAll();
+        $dbIssues = Database::connect()->createQueryBuilder()->select('*')->from('github_issues')->execute()->fetchAll();
         foreach($testIssues as &$issue) {
             $issue = [// Re create the array like in the database (yes, this is partial data)
                 'id' => $issue['number'],
