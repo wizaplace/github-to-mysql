@@ -7,7 +7,7 @@ use Doctrine\DBAL\DriverManager;
 use GitHubToMysql\data;
 use GitHubToMysql\DbSchema;
 
-class dataTest extends TestCase {
+class DataTest extends TestCase {
 
     /**
      * The connection
