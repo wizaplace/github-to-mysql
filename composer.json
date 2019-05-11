@@ -1,14 +1,16 @@
 {
-    "name": "github-to-mysql",
+    "name": "wizaplace/github-to-mysql",
     "description": "Synchronizes GitHub data (issues, labels, ...) to a MySQL database.",
     "homepage": "https://github.com/wizaplace/github-to-mysql",
-    "type": "library",
+    "type": "project",
     "readme": "https://github.com/wizaplace/github-to-mysql#readme",
-    "license": "UNLICENCED",
+    "license": "MIT",
     "version": "1.0.3",
     "keywords": [
         "github",
-        "mysql"
+        "mysql",
+        "export",
+        "issues"
     ],
     "support": {
         "issues": "https://github.com/wizaplace/github-to-mysql/issues",
