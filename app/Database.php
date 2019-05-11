@@ -8,7 +8,7 @@ use Doctrine\DBAL\Connection;
 /**
  * The database schema class
  */
-class DbSchema {
+class Database {
 
     /**
      * Get the database schema
