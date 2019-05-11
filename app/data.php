@@ -9,28 +9,6 @@ use GuzzleHttp\Exception\ClientException;
 
 class data {
 
-    public static function createSchema(Connection $db, bool $force, \Closure $onRunning = null, \Closure $onUpToDate = null): void {
-        $targetSchema = DbSchema::createSchema();
-        $currentSchema = $db->getSchemaManager()->createSchema();
-
-        $migrationQueries = $currentSchema->getMigrateToSql($targetSchema, $db->getDatabasePlatform());
-
-        $db->transactional(function () use ($migrationQueries, $force, $db, $onUpToDate, $onRunning) {
-            foreach ($migrationQueries as $query) {
-                if ($onRunning !== null) {
-                    $onRunning->call($db, $query);
-                }
-
-                if ($force) {
-                    $db->exec($query);
-                }
-            }
-            if (empty($migrationQueries) && $onUpToDate !== null) {
-                $onUpToDate->call($db);
-            }
-        });
-    }
-
     public static function createLabelsFromJson(Connection $db, array $labels, \Closure $onLabelCreation): void {
         foreach ($labels as $label) {
             $data = [

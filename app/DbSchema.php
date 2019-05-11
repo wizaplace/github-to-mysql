@@ -3,6 +3,7 @@
 namespace GitHubToMysql;
 
 use Doctrine\DBAL\Schema\Schema;
+use Doctrine\DBAL\Connection;
 
 /**
  * The database schema class
@@ -14,7 +15,7 @@ class DbSchema {
      *
      * @return Schema The schema with all tables and foreign keys
      */
-    public static function createSchema(): Schema {
+    public static function getSchema(): Schema {
 
         $schema = new Schema();
 
@@ -70,5 +71,41 @@ class DbSchema {
         ]);
 
         return $schema;
+    }
+
+    /**
+     * Create the database using the schema
+     *
+     * @param Connection $db The conexion
+     * @param boolean $force Execute the queries or not
+     * @param \Closure $onRunning The callback to be called with db and query as string
+     * @param \Closure $onUpToDate The callback to be called with db as only argument
+     * @return void
+     */
+    public static function createSchema(
+        Connection $db,
+        bool $force,
+        \Closure $onRunning = null,
+        \Closure $onUpToDate = null
+    ): void {
+        $targetSchema = self::getSchema();
+        $currentSchema = $db->getSchemaManager()->createSchema();
+
+        $migrationQueries = $currentSchema->getMigrateToSql($targetSchema, $db->getDatabasePlatform());
+
+        $db->transactional(function () use ($migrationQueries, $force, $db, $onUpToDate, $onRunning) {
+            foreach ($migrationQueries as $query) {
+                if ($onRunning !== null) {
+                    $onRunning->call($db, $query);
+                }
+
+                if ($force) {
+                    $db->exec($query);
+                }
+            }
+            if (empty($migrationQueries) && $onUpToDate !== null) {
+                $onUpToDate->call($db);
+            }
+        });
     }
 }

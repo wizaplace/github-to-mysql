@@ -5,6 +5,7 @@ namespace GitHubToMysql\Tests;
 use PHPUnit\Framework\TestCase;
 use Doctrine\DBAL\DriverManager;
 use GitHubToMysql\data;
+use GitHubToMysql\DbSchema;
 
 class dataTest extends TestCase {
 
@@ -22,7 +23,7 @@ class dataTest extends TestCase {
             'driver' => 'pdo_sqlite',
         ], $dbConfig);
 
-        data::createSchema($this->db, true);
+        DbSchema::createSchema($this->db, true);
     }
 
     public function testCreateLabelsFromJson(): void {

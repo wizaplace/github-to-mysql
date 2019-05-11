@@ -4,6 +4,7 @@ use Dotenv\Dotenv;
 use Silly\Application;
 use Symfony\Component\Console\Output\OutputInterface;
 use GitHubToMysql\data;
+use GitHubToMysql\DbSchema;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -88,7 +89,7 @@ $app->command('sync repository [--since-forever]', function ($repository, $since
 });
 
 $app->command('db-init [--force]', function ($force, OutputInterface $output) use ($db) {
-    data::createSchema($db, $force, function (string $query) use ($output) {
+    DbSchema::createSchema($db, $force, function (string $query) use ($output) {
         $output->writeln(sprintf('Running <info>%s</info>', $query));
     }, function () use ($output) {
         $output->writeln('<info>The database is up to date</info>');
