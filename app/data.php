@@ -10,7 +10,7 @@ use GuzzleHttp\Exception\ClientException;
 class data {
 
     public static function createSchema(Connection $db, bool $force, \Closure $onRunning = null, \Closure $onUpToDate = null): void {
-        $targetSchema = require __DIR__ . '/db-schema.php';
+        $targetSchema = DbSchema::createSchema();
         $currentSchema = $db->getSchemaManager()->createSchema();
 
         $migrationQueries = $currentSchema->getMigrateToSql($targetSchema, $db->getDatabasePlatform());
