@@ -1,0 +1,8 @@
+parameters:
+    level: max
+    paths:
+        - app
+        - test
+    reportUnmatchedIgnoredErrors: true
+    ignoreErrors:
+        - '#Cannot call method fetchAll\(\) on Doctrine\\DBAL\\Driver\\Statement|int#'
